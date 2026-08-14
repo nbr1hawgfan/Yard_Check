@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pernod Yard Check</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#121212">
+<style>
+  :root {
+    --bg: #121212;
+    --bg-card: #1c1c1c;
+    --border: #333333;
+    --text: #e8e8e8;
+    --text-dim: #999999;
+    --accent: #4a9eff;
+    --good: #4caf50;
+    --warn: #d9a441;
+    --bad: #d9534f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px 16px 100px 16px;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  header .shift-label {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+
+  .autocomplete-wrap {
+    position: relative;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 16px 14px;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 50;
+    display: none;
+  }
+
+  .suggestions.show { display: block; }
+
+  .suggestion-item {
+    padding: 14px;
+    font-size: 17px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:active { background: rgba(255,255,255,0.08); }
+
+  .status-toggle {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .status-btn {
+    flex: 1;
+    padding: 18px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+  }
+
+  .status-btn.selected.empty { border-color: var(--accent); background: rgba(74,158,255,0.15); color: var(--accent); }
+  .status-btn.selected.loaded { border-color: var(--good); background: rgba(76,175,80,0.15); color: var(--good); }
+
+  .add-btn {
+    width: 100%;
+    padding: 18px;
+    margin-top: 16px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .add-btn:disabled {
+    background: var(--border);
+    color: var(--text-dim);
+  }
+
+  .add-btn:active:not(:disabled) { transform: scale(0.98); }
+
+  .session-list {
+    margin-bottom: 16px;
+  }
+
+  .session-list h2 {
+    font-size: 14px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+
+  .session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+
+  .session-item .trailer-num {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .session-item .status-tag {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 20px;
+    margin-left: 10px;
+  }
+
+  .status-tag.empty { background: rgba(74,158,255,0.15); color: var(--accent); }
+  .status-tag.loaded { background: rgba(76,175,80,0.15); color: var(--good); }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--bad);
+    font-size: 22px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+
+  .empty-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    padding: 24px 0;
+  }
+
+  .submit-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)) 16px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 10px;
+    border: none;
+    background: var(--good);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .submit-btn:disabled {
+    background: var(--border);
+    color: var(--text-dim);
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 16px;
+    right: 16px;
+    background: var(--good);
+    color: #ffffff;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    z-index: 200;
+    display: none;
+  }
+
+  .toast.error { background: var(--bad); }
+  .toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <h1>Pernod Yard Check</h1>
+  <div class="shift-label" id="shiftLabel"></div>
+</header>
+
+<div class="card">
+  <label for="trailerInput">Trailer Number</label>
+  <div class="autocomplete-wrap">
+    <input type="text" id="trailerInput" placeholder="Start typing..." autocomplete="off" autocapitalize="characters">
+    <div class="suggestions" id="suggestions"></div>
+  </div>
+
+  <div class="status-toggle">
+    <button class="status-btn empty" id="statusEmpty" type="button">Empty</button>
+    <button class="status-btn loaded" id="statusLoaded" type="button">Loaded</button>
+  </div>
+
+  <button class="add-btn" id="addBtn" disabled>Add to This Check</button>
+</div>
+
+<div class="session-list">
+  <h2 id="sessionCount">0 Trailers Added</h2>
+  <div id="sessionItems">
+    <div class="empty-hint">Add trailers as you walk the yard, then submit when done.</div>
+  </div>
+</div>
+
+<div class="submit-bar">
+  <button class="submit-btn" id="submitBtn" disabled>Submit Yard Check</button>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — paste your Apps Script Web App URL here (see README)
+// ============================================================
+const WEB_APP_URL = 'PASTE_WEB_APP_URL_HERE';
+
+let knownTrailers = [];
+let session = []; // { trailerNumber, status }
+let selectedStatus = null;
+
+function shiftLabelNow() {
+  const hour = new Date().getHours();
+  const isDay = hour >= 6 && hour < 16; // matches SHIFT_DAY_START_HOUR/END_HOUR in Config.gs — keep in sync
+  const label = isDay ? 'Day Shift' : 'Evening Shift';
+  const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return label + ' — ' + time;
+}
+
+document.getElementById('shiftLabel').textContent = shiftLabelNow();
+setInterval(() => { document.getElementById('shiftLabel').textContent = shiftLabelNow(); }, 60000);
+
+async function loadKnownTrailers() {
+  if (!WEB_APP_URL || WEB_APP_URL.startsWith('PASTE_')) return;
+  try {
+    const resp = await fetch(WEB_APP_URL);
+    const data = await resp.json();
+    knownTrailers = data.trailers || [];
+  } catch (e) {
+    console.warn('Could not load trailer list for autocomplete:', e);
+  }
+}
+loadKnownTrailers();
+
+// ---- Autocomplete ----
+const trailerInput = document.getElementById('trailerInput');
+const suggestionsEl = document.getElementById('suggestions');
+
+trailerInput.addEventListener('input', () => {
+  const val = trailerInput.value.trim().toUpperCase();
+  updateAddButtonState();
+
+  if (!val) {
+    suggestionsEl.classList.remove('show');
+    return;
+  }
+
+  const matches = knownTrailers
+    .filter(t => t.toUpperCase().includes(val))
+    .slice(0, 8);
+
+  if (!matches.length) {
+    suggestionsEl.classList.remove('show');
+    return;
+  }
+
+  suggestionsEl.innerHTML = matches.map(t =>
+    `<div class="suggestion-item" data-value="${t}">${t}</div>`
+  ).join('');
+  suggestionsEl.classList.add('show');
+});
+
+suggestionsEl.addEventListener('click', (e) => {
+  const item = e.target.closest('.suggestion-item');
+  if (!item) return;
+  trailerInput.value = item.dataset.value;
+  suggestionsEl.classList.remove('show');
+  updateAddButtonState();
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.autocomplete-wrap')) suggestionsEl.classList.remove('show');
+});
+
+// ---- Status toggle ----
+const statusEmptyBtn = document.getElementById('statusEmpty');
+const statusLoadedBtn = document.getElementById('statusLoaded');
+
+statusEmptyBtn.addEventListener('click', () => {
+  selectedStatus = selectedStatus === 'Empty' ? null : 'Empty';
+  refreshStatusButtons();
+});
+statusLoadedBtn.addEventListener('click', () => {
+  selectedStatus = selectedStatus === 'Loaded' ? null : 'Loaded';
+  refreshStatusButtons();
+});
+
+function refreshStatusButtons() {
+  statusEmptyBtn.classList.toggle('selected', selectedStatus === 'Empty');
+  statusLoadedBtn.classList.toggle('selected', selectedStatus === 'Loaded');
+  updateAddButtonState();
+}
+
+function updateAddButtonState() {
+  const hasTrailer = trailerInput.value.trim().length > 0;
+  document.getElementById('addBtn').disabled = !(hasTrailer && selectedStatus);
+}
+
+// ---- Add to session ----
+document.getElementById('addBtn').addEventListener('click', () => {
+  const trailerNumber = trailerInput.value.trim().toUpperCase();
+  if (!trailerNumber || !selectedStatus) return;
+
+  session.push({ trailerNumber, status: selectedStatus });
+
+  trailerInput.value = '';
+  selectedStatus = null;
+  refreshStatusButtons();
+  trailerInput.focus();
+
+  renderSession();
+});
+
+function renderSession() {
+  const wrap = document.getElementById('sessionItems');
+  document.getElementById('sessionCount').textContent = session.length + (session.length === 1 ? ' Trailer Added' : ' Trailers Added');
+  document.getElementById('submitBtn').disabled = session.length === 0;
+
+  if (!session.length) {
+    wrap.innerHTML = '<div class="empty-hint">Add trailers as you walk the yard, then submit when done.</div>';
+    return;
+  }
+
+  wrap.innerHTML = session.map((item, i) => `
+    <div class="session-item">
+      <div>
+        <span class="trailer-num">${item.trailerNumber}</span>
+        <span class="status-tag ${item.status.toLowerCase()}">${item.status}</span>
+      </div>
+      <button class="remove-btn" data-index="${i}">&times;</button>
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      session.splice(parseInt(btn.dataset.index, 10), 1);
+      renderSession();
+    });
+  });
+}
+
+// ---- Submit ----
+function showToast(message, isError) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => { toast.classList.remove('show'); }, 3500);
+}
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  if (!session.length) return;
+
+  if (!WEB_APP_URL || WEB_APP_URL.startsWith('PASTE_')) {
+    showToast('App not fully set up yet — ask your manager to finish configuration.', true);
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+
+  try {
+    // Sent as text/plain rather than application/json — Apps Script Web
+    // Apps don't handle the CORS preflight browsers send for JSON POSTs,
+    // so this avoids that entirely. The server still parses it as JSON.
+    const resp = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ trailers: session })
+    });
+
+    const result = await resp.json();
+
+    if (result.success) {
+      showToast('Yard check submitted — ' + result.trailersReported + ' trailers recorded.', false);
+      session = [];
+      renderSession();
+      loadKnownTrailers(); // refresh in case new trailer numbers were added
+    } else {
+      showToast('Submission failed: ' + (result.error || 'unknown error'), true);
+    }
+  } catch (e) {
+    showToast('Could not reach the server. Check your connection and try again.', true);
+  } finally {
+    submitBtn.disabled = session.length === 0;
+    submitBtn.textContent = 'Submit Yard Check';
+  }
+});
+
+// ---- PWA install support ----
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
